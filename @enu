@@ -1,0 +1,741 @@
+local placeId1 = 3527629287
+
+if game.PlaceId == placeId1 then
+    -- Carrega o OrionLib e cria a janela
+    local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/XqrpaiBrxxys/AINEL-IG-aintball/refs/heads/main/%40ainel"))()
+local Window = OrionLib:MakeWindow({Name = " SyniX HUB-BIG Paintball ", HidePremium = false, SaveConfig = false, ConfigFolder = "Synix"})
+
+
+local ABOUTTab = Window:MakeTab({
+    Name = "ABOUT",
+    Icon = "rbxassetid://14824506141",
+    PremiumOnly = false
+})
+
+ABOUTTab:AddLabel("                                             BIG Paintball")
+
+ local Section = ABOUTTab:AddSection({
+	Name = ""
+})
+ 
+ABOUTTab:AddLabel("                      Hello, thank you for using 'SyniX HUB'")
+local Section = ABOUTTab:AddSection({
+	Name = ""
+})
+ABOUTTab:AddLabel("                                  SOCIAL NETWORK")
+
+ 
+ 
+ABOUTTab:AddButton({
+    Name = "                                            DISCORD ",
+    Callback = function()
+        setclipboard("https://discord.com/invite/2K9pfDHe")
+        OrionLib:MakeNotification({
+            Name = "SyniX HUB",
+            Content = "Copied Discord link",
+            Image = "rbxassetid://14962192917",
+            Time = 5
+        })
+    end
+})
+ local Section = ABOUTTab:AddSection({
+	Name = ""
+})
+  ABOUTTab:AddLabel("                     DEVELOPERS: RayzMd | Zor_Son")
+
+
+
+  
+
+local AIMBOTTab= Window:MakeTab({
+    Name = "AIMBOT",
+    Icon = "rbxassetid://86146554785752",
+    PremiumOnly = false
+})
+
+
+
+
+local selectedFunction = nil -- Variável para armazenar a função selecionada
+local spectatorLoop -- Variável para armazenar a conexão do RenderStepped
+local originalCFrame = nil -- Variável para armazenar a posição original da câmera
+local lastTargetPlayer = nil -- Armazena o último jogador espectado
+local lastTargetCFrame = nil -- Armazena a última posição da câmera do jogador espectado
+local lastCameraPosition = nil -- Armazena a última posição da câmera
+
+local function handleAura()
+    local localPlayer = game.Players.LocalPlayer
+    local camera = game.Workspace.CurrentCamera
+
+    getgenv().enabled = true
+    getgenv().filluseteamcolor = false
+    getgenv().outlineuseteamcolor = false
+    getgenv().fillcolor = Color3.new(1, 0, 0)
+    getgenv().outlinecolor = Color3.new(1, 1, 1)
+    getgenv().filltrans = 0
+    getgenv().outlinetrans = 0
+
+    local holder = game.CoreGui:FindFirstChild("ESPHolder") or Instance.new("Folder")
+    if holder.Name == "Folder" then
+        holder.Name = "ESPHolder"
+        holder.Parent = game.CoreGui
+    end
+
+    local function getSpectateTarget()
+        for _, player in pairs(game.Players:GetPlayers()) do
+            local character = player.Character
+            local hasGunInDebris = workspace:FindFirstChild("__DEBRIS") 
+                and workspace.__DEBRIS:FindFirstChild("Guns") 
+                and workspace.__DEBRIS.Guns:FindFirstChild(player.Name)
+
+            if player.Name ~= localPlayer.Name 
+                and (not player.Team or player.Team ~= localPlayer.Team)
+                and character
+                and character:FindFirstChild("Humanoid")
+                and character.Humanoid.Health > 0
+                and not character:FindFirstChild("ForceField")
+                and hasGunInDebris
+            then
+                return player
+            end
+        end
+        return nil
+    end
+
+    local function startSpectating()
+        local targetPlayer = getSpectateTarget()
+
+        if not targetPlayer and lastTargetPlayer then
+            targetPlayer = lastTargetPlayer
+        end
+
+        if not originalCFrame then
+            originalCFrame = camera.CFrame 
+        end
+
+        if targetPlayer and targetPlayer.Character then
+            lastTargetPlayer = targetPlayer
+            local head = targetPlayer.Character:FindFirstChild("Head")
+            
+            if head then
+                lastTargetCFrame = CFrame.new(
+                    head.Position + Vector3.new(0, 5, 0),
+                    head.Position
+                )
+
+                spectatorLoop = game:GetService("RunService").RenderStepped:Connect(function()
+                    if targetPlayer 
+                        and targetPlayer.Character 
+                        and targetPlayer.Character:FindFirstChild("Head")
+                        and targetPlayer.Character:FindFirstChild("Humanoid").Health > 0
+                        and not targetPlayer.Character:FindFirstChild("ForceField")
+                    then
+                        head = targetPlayer.Character.Head
+                        camera.CFrame = CFrame.new(
+                            head.Position + Vector3.new(0, 5, 0),
+                            head.Position
+                        )
+                        
+                        lastTargetCFrame = camera.CFrame
+                        
+                        local esp = holder:FindFirstChild(targetPlayer.Name) or Instance.new("Highlight")
+                        esp.Name = targetPlayer.Name
+                        esp.Parent = holder
+                        if filluseteamcolor then
+                            esp.FillColor = targetPlayer.TeamColor.Color
+                        else
+                            esp.FillColor = fillcolor 
+                        end
+                        if outlineuseteamcolor then
+                            esp.OutlineColor = targetPlayer.TeamColor.Color
+                        else
+                            esp.OutlineColor = outlinecolor    
+                        end
+                        esp.FillTransparency = filltrans
+                        esp.OutlineTransparency = outlinetrans
+                        esp.Adornee = targetPlayer.Character
+                        esp.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+                    else
+                        targetPlayer = getSpectateTarget()
+                        if not targetPlayer and lastTargetCFrame then
+                            camera.CFrame = lastTargetCFrame
+                        end
+                    end
+                end)
+            end
+        else
+            if lastTargetCFrame then
+                camera.CFrame = lastTargetCFrame
+            end
+        end
+    end
+
+    startSpectating()
+end
+
+local function stopAura()
+    if spectatorLoop then
+        spectatorLoop:Disconnect()
+        spectatorLoop = nil
+    end
+
+    if originalCFrame then
+        game.Workspace.CurrentCamera.CFrame = originalCFrame
+        originalCFrame = nil
+    end
+
+    -- Teleportar o personagem para a última posição da câmera
+    local localPlayer = game.Players.LocalPlayer
+    if lastCameraPosition then
+        localPlayer.Character:MoveTo(lastCameraPosition.Position) -- Teletransporta o personagem
+    end
+
+    local holder = game.CoreGui:FindFirstChild("ESPHolder")
+    if holder then
+        holder:ClearAllChildren()
+    end
+end
+
+local actions = {
+    ["Aura"] = handleAura
+}
+
+local deactivations = {
+    ["Aura"] = stopAura
+}
+
+AIMBOTTab:AddLabel("                                             SharpShot")
+
+-- Toggle para ativar/desativar a funcionalidade "Aura"
+AIMBOTTab:AddToggle({
+    Name = "ACTIVE",
+    Default = false,
+    Callback = function(Value)
+        if Value then
+            actions["Aura"]() -- Ativa a função Aura
+        else
+            stopAura() -- Desativa a função Aura e teletransporta o personagem
+        end
+    end    
+})
+
+-- Atualiza a posição da câmera enquanto a função está ativa
+game:GetService("RunService").RenderStepped:Connect(function()
+    if spectatorLoop then
+        lastCameraPosition = game.Workspace.CurrentCamera.CFrame -- Armazena a posição atual da câmera
+    end
+end)
+local PLAYERTab = Window:MakeTab({
+    Name = "PLAYER",
+    Icon = "rbxassetid://14961970030", -- Substitua pelo ID correto do Ã­cone
+    PremiumOnly = false
+})
+PLAYERTab:AddLabel("                                       PLAYER FUNCTION")
+
+
+
+
+
+local isEspEnabled = false
+local player = game.Players.LocalPlayer
+local espInstances = {}
+
+-- Função para verificar se todos os jogadores estão no mesmo time
+local function areAllPlayersSameTeam()
+    local team = player.Team
+    for _, v in ipairs(game.Players:GetPlayers()) do
+        if v ~= player and v.Team ~= team then
+            return false
+        end
+    end
+    return true
+end
+
+-- Função para criar ESP
+local function createEsp(targetPlayer)
+    local head = targetPlayer.Character and targetPlayer.Character:FindFirstChild("Head")
+    if head and not head:FindFirstChild("ESP") then
+        local BillboardGui = Instance.new("BillboardGui", head)
+        BillboardGui.Name = "ESP"
+        BillboardGui.AlwaysOnTop = true
+        BillboardGui.LightInfluence = 1
+        BillboardGui.Size = UDim2.new(0, 200, 0, 50)
+        BillboardGui.StudsOffset = Vector3.new(0, 3, 0)
+
+        local TextLabel = Instance.new("TextLabel", BillboardGui)
+        TextLabel.BackgroundTransparency = 1
+        TextLabel.Size = UDim2.new(1, 0, 1, 0)
+        TextLabel.Font = Enum.Font.GothamBold
+        TextLabel.TextStrokeTransparency = 0.5
+        TextLabel.TextSize = 14
+        TextLabel.TextWrapped = true
+        TextLabel.TextXAlignment = Enum.TextXAlignment.Center
+        TextLabel.TextYAlignment = Enum.TextYAlignment.Center
+
+        local allSameTeam = areAllPlayersSameTeam()
+        TextLabel.TextColor3 = allSameTeam and Color3.fromRGB(255, 0, 0) or 
+            (targetPlayer.Team == player.Team and Color3.fromRGB(0, 191, 255) or Color3.fromRGB(255, 0, 0))
+
+        -- Função para atualizar o texto
+        local function updateText()
+            if head then
+                local distance = (head.Position - game.Workspace.CurrentCamera.CFrame.Position).Magnitude
+                TextLabel.Text = string.format("%s\n%.0f studs", targetPlayer.Name, distance)
+            end
+        end
+
+        game:GetService("RunService").RenderStepped:Connect(updateText)
+        table.insert(espInstances, BillboardGui)
+    end
+end
+
+-- Função para remover ESP
+local function removeEsp(targetPlayer)
+    local head = targetPlayer.Character and targetPlayer.Character:FindFirstChild("Head")
+    if head then
+        local espGui = head:FindFirstChild("ESP")
+        if espGui then
+            espGui:Destroy()
+        end
+    end
+end
+
+-- Função para atualizar o ESP
+local function updateEsp()
+    for _, v in ipairs(game.Players:GetPlayers()) do
+        if v ~= player then
+            if isEspEnabled then
+                createEsp(v)
+            else
+                removeEsp(v)
+            end
+        end
+    end
+end
+
+-- Adicionar Toggle para ativar/desativar o ESP
+PLAYERTab:AddToggle({
+    Name = "ESP PLAYERS",
+    Default = false,
+    Callback = function(value)
+        isEspEnabled = value -- Atualiza o status do ESP com o valor do botão de alternância
+        updateEsp() -- Atualiza o ESP com base no novo valor
+    end
+})
+
+-- Evento para remover o ESP ao sair do jogo
+game.Players.PlayerRemoving:Connect(function(player)
+    removeEsp(player)
+end)
+
+-- Evento para atualizar o ESP quando um novo jogador entrar
+game.Players.PlayerAdded:Connect(function(newPlayer)
+    if isEspEnabled then
+        createEsp(newPlayer)
+    end
+end)
+
+-- Função de loop para atualizar o ESP frequentemente
+local function espLoop()
+    while true do
+        if isEspEnabled then
+            updateEsp()
+        end
+        wait(1) -- Aguarde 1 segundo antes de atualizar novamente (ajuste conforme necessário)
+    end
+end
+
+-- Iniciar o loop em uma nova thread
+spawn(espLoop)
+
+-- Atualizar ESP para todos os jogadores existentes quando o script é executado
+if isEspEnabled then
+    updateEsp()
+end
+
+-- Limpar todos os ESPs quando o script é reexecutado
+for _, gui in pairs(espInstances) do
+    if gui and gui.Parent then
+        gui:Destroy()
+    end
+end
+espInstances = {}
+local InfiniteJumpEnabled = false
+local Player = game:GetService("Players").LocalPlayer
+local UserInputService = game:GetService("UserInputService")
+
+PLAYERTab:AddToggle({
+    Name = "JUMP",
+    Default = false,
+    Callback = function(value)
+        InfiniteJumpEnabled = value
+        if InfiniteJumpEnabled then
+            UserInputService.JumpRequest:Connect(function()
+                if InfiniteJumpEnabled then
+                    local character = Player.Character
+                    if character and character:FindFirstChild("HumanoidRootPart") then
+                        character.HumanoidRootPart.Velocity = Vector3.new(0, 50, 0) -- Ajuste a força do pulo
+                    end
+                end
+            end)
+        end
+    end
+})
+
+local noclipEnabled = false
+
+PLAYERTab:AddToggle({
+    Name = "NOCLIP",
+    Default = false,
+    Callback = function(value)
+        noclipEnabled = value
+        local player = game.Players.LocalPlayer
+        local character = player.Character
+
+        if character then
+            for _, part in pairs(character:GetChildren()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = not noclipEnabled
+                end
+            end
+
+            -- Opcional: Ajustar a saÃºde mÃ¡xima e atual do jogador
+            local humanoid = character:FindFirstChildOfClass("Humanoid")
+            if humanoid then
+                humanoid.MaxHealth = noclipEnabled and math.huge or 100
+                humanoid.Health = noclipEnabled and math.huge or 100
+            end
+        end
+    end
+})
+
+-- Noclip toggle
+game:GetService("RunService").Stepped:Connect(function()
+    if noclipEnabled then
+        local player = game.Players.LocalPlayer
+        local character = player.Character
+
+        if character then
+            for _, part in pairs(character:GetChildren()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = false
+                end
+            end
+        end
+    end
+end)
+
+
+
+
+
+local CONFIGTab = Window:MakeTab({
+    Name = "CONFIG",
+    Icon = "rbxassetid://18702777518", -- Substitua pelo ID correto do Ã­cone
+    PremiumOnly = false
+})
+CONFIGTab:AddLabel("                                                  MAP")
+
+       CONFIGTab:AddButton({
+    Name = "OPTIMIZATION",
+    Callback = function()
+
+        -- Reduzir qualidade gráfica
+        settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+
+        -- Desativar efeitos visuais desnecessários
+        game.Lighting.GlobalShadows = false
+        game.Lighting.FogEnd = 9e9
+        game.Lighting.Brightness = 1
+
+        -- Ajustar câmera
+        workspace.CurrentCamera.FieldOfView = 70
+
+        -- Desativar sombras em partes
+        for _, part in pairs(workspace:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CastShadow = false
+            end
+        end
+
+        -- Desativar partículas e efeitos de água
+        for _, particle in pairs(workspace:GetDescendants()) do
+            if particle:IsA("ParticleEmitter") or particle:IsA("Trail") then
+                particle.Enabled = false -- Desativar todas as partículas
+            end
+        end
+
+        -- Remover efeitos de chuva
+        for _, effect in pairs(workspace:GetDescendants()) do
+            if effect:IsA("ParticleEmitter") and effect.Name:lower():find("rain") then
+                effect.Enabled = false -- Desativar partículas de chuva
+            elseif effect:IsA("Sound") and effect.Name:lower():find("rain") then
+                effect:Stop() -- Parar sons de chuva
+            end
+        end
+
+    end
+})
+
+-- Variável para garantir que o FPS counter seja ativado apenas uma vez
+
+
+CONFIGTab:AddLabel("                                                SERVER")
+
+
+
+
+-- FunÃ§Ã£o para reiniciar o jogo
+local function rejoinGame()
+    -- Primeiro, desconecta do servidor atual
+
+game:GetService("Players").LocalPlayer:Kick(">SyniX HUB< Rejoining the game...")    -- Depois de um pequeno atraso, reconecta ao servidor com o mesmo mapa
+    wait(0.1)  -- Tempo de espera para garantir que a desconexÃ£o ocorreu
+
+    -- ObtÃ©m o ID do mapa atual e tenta se conectar ao servidor
+    local TeleportService = game:GetService("TeleportService")
+    local player = game.Players.LocalPlayer
+    TeleportService:Teleport(game.PlaceId, player)
+end
+
+-- Adiciona o botÃ£o Ã  aba CONFIG
+CONFIGTab:AddButton({
+    Name = "REJOIN",
+    Callback = function()
+        rejoinGame()  -- Chama a funÃ§Ã£o de rejoin quando o botÃ£o Ã© clicado
+    end
+})
+  
+
+CONFIGTab:AddButton({
+    Name = "FEW PLAYERS",
+    Callback = function()
+        local AllIDs = {}
+        local foundAnything = ""
+        local actualHour = os.date("!*t").hour
+        local S_T = game:GetService("TeleportService")
+        local S_H = game:GetService("HttpService")
+        local placeId = game.PlaceId  -- ObtÃ©m automaticamente o ID do jogo atual
+
+        -- Tenta ler o arquivo de IDs de servidores jÃ¡ visitados
+        local File = pcall(function()
+            AllIDs = S_H:JSONDecode(readfile("server-hop-temp.json"))
+        end)
+        if not File then
+            table.insert(AllIDs, actualHour)
+            pcall(function()
+                writefile("server-hop-temp.json", S_H:JSONEncode(AllIDs))
+            end)
+        end
+
+        local function PlayAnimation()
+   -- Gui to Lua
+-- Version: 3.2
+
+-- Instances:
+
+local notfic = Instance.new("ScreenGui")
+local backNOT = Instance.new("Frame")
+local UICorner = Instance.new("UICorner"
+                             )
+local UIAspectRatioConstraint = Instance.new("UIAspectRatioConstraint")
+local div = Instance.new("Frame")
+local div1 = Instance.new("Frame")
+local SynixText = Instance.new("TextLabel")
+local UIAspectRatioConstraint_2 = Instance.new("UIAspectRatioConstraint")
+local ImageLabel = Instance.new("ImageLabel")
+local UIAspectRatioConstraint_3 = Instance.new("UIAspectRatioConstraint")
+local UIAspectRatioConstraint_4 = Instance.new("UIAspectRatioConstraint")
+local textarea = Instance.new("Frame")
+local UIAspectRatioConstraint_5 = Instance.new("UIAspectRatioConstraint")
+local textanot = Instance.new("TextLabel")
+local UIAspectRatioConstraint_6 = Instance.new("UIAspectRatioConstraint")
+
+-- Properties:
+
+notfic.Name = "notfic"
+notfic.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+notfic.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+backNOT.Name = "backNOT"
+backNOT.Parent = notfic
+backNOT.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+backNOT.BackgroundTransparency = 0.400
+backNOT.BorderColor3 = Color3.fromRGB(0, 0, 0)
+backNOT.BorderSizePixel = 0
+backNOT.Position = UDim2.new(0.776361048, 0, 0.709379315, 0)
+backNOT.Size = UDim2.new(0.384245038, 0, 0.183602542, 0)
+
+UICorner.Parent = backNOT
+
+UIAspectRatioConstraint.Parent = backNOT
+UIAspectRatioConstraint.AspectRatio = 3.560
+
+div.Name = "div"
+div.Parent = backNOT
+div.BackgroundColor3 = Color3.fromRGB(167, 167, 167)
+div.BackgroundTransparency = 1
+div.BorderColor3 = Color3.fromRGB(0, 0, 0)
+div.BorderSizePixel = 0
+div.Position = UDim2.new(-0.00190504093, 0, 0.401610732, 0)
+div.Size = UDim2.new(0.703590274, 0, 0.0135650374, 0)
+
+div1.Name = "div1"
+div1.Parent = backNOT
+div1.BackgroundColor3 = Color3.fromRGB(167, 167, 167)
+div1.BackgroundTransparency = 0.500
+div1.BorderColor3 = Color3.fromRGB(0, 0, 0)
+div1.BorderSizePixel = 0
+div1.Position = UDim2.new(-0.00190504093, 0, 0.401610732, 0)
+div1.Size = UDim2.new(0.703590274, 0, 0.0135650374, 0)
+
+
+SynixText.Name = "SynixText"
+SynixText.Parent = div
+SynixText.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+SynixText.BackgroundTransparency = 1.000
+SynixText.BorderColor3 = Color3.fromRGB(0, 0, 0)
+SynixText.BorderSizePixel = 0
+SynixText.Position = UDim2.new(0.174563825, 0, -25.2587624, 0)
+SynixText.Size = UDim2.new(0.695285857, 0, 19.9284687, 0)
+SynixText.Font = Enum.Font.GothamBlack
+SynixText.Text = "SyniX - Notific"
+SynixText.TextColor3 = Color3.fromRGB(255, 255, 255)
+SynixText.TextScaled = true
+SynixText.TextSize = 11.000
+SynixText.TextStrokeColor3 = Color3.fromRGB(255, 255, 255)
+SynixText.TextWrapped = true
+
+UIAspectRatioConstraint_2.Parent = SynixText
+UIAspectRatioConstraint_2.AspectRatio = 5.583
+
+ImageLabel.Parent = div
+ImageLabel.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+ImageLabel.BackgroundTransparency = 1.000
+ImageLabel.BorderColor3 = Color3.fromRGB(0, 0, 0)
+ImageLabel.BorderSizePixel = 0
+ImageLabel.Position = UDim2.new(0.0560515448, 0, -26.2637463, 0)
+ImageLabel.Size = UDim2.new(0.127630442, 0, 21.7752609, 0)
+ImageLabel.Image = "rbxassetid://14862323455"
+
+UIAspectRatioConstraint_3.Parent = ImageLabel
+
+UIAspectRatioConstraint_4.Parent = div
+UIAspectRatioConstraint_4.AspectRatio = 184.650
+
+textarea.Name = "textarea"
+textarea.Parent = backNOT
+textarea.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+textarea.BackgroundTransparency = 1.000
+textarea.BorderColor3 = Color3.fromRGB(0, 0, 0)
+textarea.BorderSizePixel = 0
+textarea.Position = UDim2.new(0, 0, 0.415175945, 0)
+textarea.Size = UDim2.new(0.701685667, 0, 0.582388222, 0)
+
+UIAspectRatioConstraint_5.Parent = textarea
+UIAspectRatioConstraint_5.AspectRatio = 4.289
+
+textanot.Name = "textanot"
+textanot.Parent = textarea
+textanot.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+textanot.BackgroundTransparency = 1.000
+textanot.BorderColor3 = Color3.fromRGB(0, 0, 0)
+textanot.BorderSizePixel = 0
+textanot.Position = UDim2.new(0.0892357156, 0, 0.159190118, 0)
+textanot.Size = UDim2.new(0.762829661, 0, 1.50985551, 0)
+textanot.Font = Enum.Font.GothamBold  -- Fonte em negrito
+textanot.LineHeight = 0.850
+textanot.Text = "Searching for Server..."
+textanot.TextColor3 = Color3.fromRGB(255, 255, 255)
+textanot.TextScaled = true
+textanot.TextSize = 5.000
+textanot.TextWrapped = true
+UIAspectRatioConstraint_6.Parent = textanot
+UIAspectRatioConstraint_6.AspectRatio = 5.080
+UIAspectRatioConstraint_6.DominantAxis = Enum.DominantAxis.Height
+
+local duration = 5 -- DuraÃ§Ã£o da notificaÃ§Ã£o em segundos
+local endTime = tick() + duration
+
+while tick() < endTime do
+    local remainingTime = endTime - tick()
+    local scaleFactor = remainingTime / duration
+    div1.Size = UDim2.new(scaleFactor, 0, 0.0135650374, 0)
+    wait(0.1) -- Atualize o tamanho a cada 0.1 segundo (vocÃª pode ajustar esse valor conforme necessÃ¡rio)
+end
+
+-- Agora que o tempo acabou, vocÃª pode esconder e remover a notificaÃ§Ã£o
+div1.Visible = false
+backNOT:Destroy() -- Isso remove o frame completamente
+        end
+
+        local function TPReturner()
+            local Site
+            if foundAnything == "" then
+                Site = S_H:JSONDecode(game:HttpGet('https://games.roblox.com/v1/games/' .. placeId .. '/servers/Public?sortOrder=Asc&limit=100'))
+            else
+                Site = S_H:JSONDecode(game:HttpGet('https://games.roblox.com/v1/games/' .. placeId .. '/servers/Public?sortOrder=Asc&limit=100&cursor=' .. foundAnything))
+            end
+
+            if Site.nextPageCursor then
+                foundAnything = Site.nextPageCursor
+            end
+
+            local num = 0
+            for _, v in pairs(Site.data) do
+                local Possible = true
+                local ID = tostring(v.id)
+                local playerCount = tonumber(v.playing)
+
+                -- Verifica se o servidor tem entre 1 e 2 jogadores
+                if playerCount >= 1 and playerCount <= 7 then
+                    for _, Existing in pairs(AllIDs) do
+                        if num ~= 0 and ID == tostring(Existing) then
+                            Possible = false
+                            break
+                        elseif tonumber(actualHour) ~= tonumber(Existing) then
+                            pcall(function()
+                                delfile("server-hop-temp.json")
+                                AllIDs = {actualHour}
+                            end)
+                        end
+                        num = num + 1
+                    end
+                    if Possible then
+                        table.insert(AllIDs, ID)
+                        pcall(function()
+                            writefile("server-hop-temp.json", S_H:JSONEncode(AllIDs))
+
+                            -- Execute a animaÃ§Ã£o
+                            coroutine.wrap(function()
+                                PlayAnimation()
+                            end)()
+
+                            -- Aguarde um intervalo aleatÃ³rio antes de iniciar o teleporte
+                            local delays = {4.3, 3.9, 3.6}
+                            local delay = delays[math.random(1, #delays)] -- Escolhe aleatoriamente um dos intervalos
+                            wait(delay) -- Ajuste conforme necessÃ¡rio para garantir que o teleporte ocorra antes da animaÃ§Ã£o terminar
+
+                            -- ApÃ³s o intervalo, realize o teleporte
+                            S_T:TeleportToPlaceInstance(placeId, ID, game.Players.LocalPlayer)
+                        end)
+                        wait(4) -- Pequena espera antes de tentar novamente
+                        break
+                    end
+                end
+            end
+        end
+
+        -- Inicia o processo de teleporte ao clicar no botÃ£o
+        pcall(function()
+            TPReturner()
+            while foundAnything ~= "" do
+                TPReturner()
+            end
+        end)
+    end
+})
+                                                   
+                                                   
+                                                   CONFIGTab:AddLabel("                                                 SOON")
+end                                                   
